@@ -34,7 +34,7 @@ Browser (Client half)  --fetch /deepseek-balance-->  Host HTTP route  -->  api.d
 
 ### 通过 [plugin-registry](https://github.com/vlln/plugin-registry) 安装
 
-设置 → 插件 → 安装,source 填 `@choi-peng/dsh-deepseek-balance` 或者 `github:Choi-Peng/dsh-deepseek-balance`
+设置 → 插件 → 安装,source 填 `@choi-p/dsh-deepseek-balance` 或者 `github:Choi-Peng/dsh-deepseek-balance`
 
 ### 手动安装
 
@@ -48,7 +48,7 @@ dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 # ~/.dsh/profiles/web/cordis.patch.yml
 - insert:
     - id: deepseek-balance
-      name: '@choi-peng/dsh-deepseek-balance'
+      name: '@choi-p/dsh-deepseek-balance'
       config:
         displayCurrency: cny
         warningThresholdCny: 0
@@ -59,7 +59,7 @@ dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 
 先从 cordis.patch.yml 移除该行（实时生效），然后：
 ```bash
-dsh plugin --profile web remove @choi-peng/dsh-deepseek-balance
+dsh plugin --profile web remove @choi-p/dsh-deepseek-balance
 ```
 
 ## 配置
@@ -86,7 +86,7 @@ API 密钥按以下顺序解析：
 
 ```bash
 # 校验 host 半部分可被干净地导入：
-node --input-type=module -e "import('@choi-peng/dsh-deepseek-balance').then(m => console.log(m.name, m.inject))"
+node --input-type=module -e "import('@choi-p/dsh-deepseek-balance').then(m => console.log(m.name, m.inject))"
 
 # 对 client bundle 做语法检查：
 node -e "new Function(require('fs').readFileSync('lib/client.js', 'utf8'))"

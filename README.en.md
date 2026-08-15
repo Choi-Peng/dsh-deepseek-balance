@@ -36,7 +36,7 @@ Browser (Client half)  --fetch /deepseek-balance-->  Host HTTP route  -->  api.d
 
 ### Via [plugin-registry](https://github.com/vlln/plugin-registry)
 
-Settings → Plugins → Install, and set the source to `@choi-peng/dsh-deepseek-balance` or `github:Choi-Peng/dsh-deepseek-balance`.
+Settings → Plugins → Install, and set the source to `@choi-p/dsh-deepseek-balance` or `github:Choi-Peng/dsh-deepseek-balance`.
 
 ### Manual Installation
 
@@ -50,7 +50,7 @@ dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 # ~/.dsh/profiles/web/cordis.patch.yml
 - insert:
     - id: deepseek-balance
-      name: '@choi-peng/dsh-deepseek-balance'
+      name: '@choi-p/dsh-deepseek-balance'
       config:
         displayCurrency: cny
         warningThresholdCny: 0
@@ -61,7 +61,7 @@ dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 
 First remove the row from `cordis.patch.yml` (applies live), then:
 ```bash
-dsh plugin --profile web remove @choi-peng/dsh-deepseek-balance
+dsh plugin --profile web remove @choi-p/dsh-deepseek-balance
 ```
 
 ## Configuration
@@ -89,7 +89,7 @@ The balance API returns both CNY and USD balances when present; the plugin prefe
 
 ```bash
 # Validate the host half imports cleanly:
-node --input-type=module -e "import('@choi-peng/dsh-deepseek-balance').then(m => console.log(m.name, m.inject))"
+node --input-type=module -e "import('@choi-p/dsh-deepseek-balance').then(m => console.log(m.name, m.inject))"
 
 # Syntax-check the client bundle:
 node -e "new Function(require('fs').readFileSync('lib/client.js', 'utf8'))"
