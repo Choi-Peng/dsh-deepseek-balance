@@ -25,7 +25,7 @@ This is a **dual-face Cordis plugin**:
 
 | Half | File | Role |
 | --- | --- | --- |
-| Host | `lib/index.js` | Registers `/deepseek-balance` (proxies the [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)) and `/deepseek-balance/settings` (GET effective config; POST saves/resets UI overrides to `$DSH_HOME/deepseek-balance.json`) |
+| Host | `lib/index.js` | Registers `/deepseek-balance` (proxies the [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)) and `/deepseek-balance/settings` (GET effective config; POST saves/resets settings back into this plugin's row in the profile's `cordis.patch.yml`, falling back to `$DSH_HOME/deepseek-balance.json` when the row is not in the profile patch) |
 | Client | `lib/client.js` | Registers the balance readout in the `sidebar.footer.action` slot (60 s poll) and an editable Balance Monitor card in Settings → Plugins |
 
 ```
@@ -66,14 +66,15 @@ dsh plugin --profile web remove @choi-p/dsh-deepseek-balance
 
 ## Configuration
 
-The plugin settings are layered, and **both layers apply live, without restarting `dsh web`**:
+The plugin settings are layered, and **all layers apply live, without restarting `dsh web`**:
 
 | Layer | Source | How it applies |
 | --- | --- | --- |
-| Base | the `deepseek-balance` row `config` in the profile's `cordis.patch.yml` | `dsh web` watches the patch layer (HMR); saving the file restarts this fiber with the new config |
-| Overrides | `$DSH_HOME/deepseek-balance.json` — written by **Settings → Plugins → Balance Monitor** | The host re-reads the file on every `/deepseek-balance/settings` request, so edits apply immediately; overrides win per field |
+| Defaults | hard-coded in the plugin (`cny`, both thresholds 0) | — |
+| Primary | the `deepseek-balance` row `config` in the profile's `cordis.patch.yml` — **Save/Reset from Settings → Plugins → Balance Monitor rewrites that row directly** (only the row's `config` block is replaced; comments, `!!js` expressions, and other rows in the file are preserved verbatim; a full-file rewrite is used only when the row text is unrecognizable) | `dsh web` watches the patch layer (HMR); writing the file restarts this fiber with the new config, no restart needed |
+| Fallback | when the row is not in the profile's patch file (e.g. mounted from the home-level `$DSH_HOME/cordis.patch.yml` or a custom config), UI edits fall back to the legacy `$DSH_HOME/deepseek-balance.json` | The host re-reads the file on every `/deepseek-balance/settings` request, so edits apply immediately |
 
-Effective settings = patch base overlaid with UI overrides. The card exposes
+A successful patch write also clears the legacy overrides file so a stale value can never shadow the patch config. The card exposes
 `displayCurrency` (select) and both warning thresholds (number inputs), with
 Save / Reset-to-defaults; after saving, the sidebar readout refreshes
 immediately (it also re-polls every 60 s).
