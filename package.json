@@ -1,7 +1,19 @@
 {
-  "name": "@dsh-local/deepseek-balance",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@choi-peng/dsh-deepseek-balance",
+  "version": "0.3.0",
+  "description": "DeepSeek account balance in the dsh web sidebar footer, with live config hot reload and an editable Settings → Plugins card.",
+  "license": "MIT",
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "balance"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Choi-Peng/dsh-deepseek-balance.git"
+  },
   "type": "module",
   "main": "lib/index.js",
   "exports": {
