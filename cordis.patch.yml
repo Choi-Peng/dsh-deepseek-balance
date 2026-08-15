@@ -1,0 +1,16 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+
+# DeepSeek balance display in the sidebar footer (above Settings).
+# Configuration (edit here, then restart dsh web to apply):
+#   displayCurrency:       cny | usd | both  — which balance(s) the sidebar shows
+#   warningThresholdCny:   warning threshold in CNY; 0 disables
+#   warningThresholdUsd:   warning threshold in USD; 0 disables
+- insert:
+    - id: deepseek-balance
+      name: '@dsh-local/deepseek-balance'
+      config:
+        displayCurrency: cny
+        warningThresholdCny: 0
+        warningThresholdUsd: 0
