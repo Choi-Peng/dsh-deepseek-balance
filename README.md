@@ -74,6 +74,33 @@ Remove with:
 dsh plugin --profile web remove @choi-peng/dsh-deepseek-balance
 ```
 
+### 通过 vlln/plugin-registry 安装
+
+本仓库的 [`catalog.json`](catalog.json) 是 hub 格式的发现索引
+(`bundle: false` → 纯插件,走 insert 行**实时挂载**),可直接接入
+[vlln/plugin-registry](https://github.com/vlln/plugin-registry) 的薄控制台
+与 `plugin_*` 工具(已实测:git 源安装 → 控制台写 insert 行 → 配置 HMR
+零重启挂载)。
+
+1. 安装薄控制台(一次,bundle,重启 web 生效):
+   ```bash
+   dsh plugin --profile web add "github:vlln/plugin-registry#main&path:/packages/plugin/console"
+   ```
+
+2. 让 `plugin_search` 能找到本插件——把发现源加入 `$DSH_HOME/plugin-sources/sources.yml`:
+   ```yaml
+   sources:
+     - id: choi-peng
+       kind: index
+       locator: https://raw.githubusercontent.com/Choi-Peng/dsh-deepseek-balance/main/catalog.json
+       trust: community
+   ```
+   或直接用工具探测并记住:`plugin_search --source <上面的 URL>`。
+
+3. 安装(两种途径,均实时挂载、无需重启):
+   - **面板**:设置 → 插件 → 安装,source 填 `github:Choi-Peng/dsh-deepseek-balance`;
+   - **工具**:`plugin_install`,source 同上(npm 发布后可直填 `@choi-peng/dsh-deepseek-balance`)。
+
 ## Configuration
 
 The plugin settings are layered, and **both layers apply live, without

@@ -1,0 +1,10 @@
+{
+  "repos": [
+    {
+      "name": "dsh-deepseek-balance",
+      "url": "https://github.com/Choi-Peng/dsh-deepseek-balance",
+      "description": "DeepSeek account balance in the dsh web sidebar footer — live config hot reload and an editable Settings → Plugins card.",
+      "bundle": false
+    }
+  ]
+}
