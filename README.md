@@ -1,56 +1,50 @@
 # dsh-deepseek-balance
 
-A persistent [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Cordis plugin that shows your DeepSeek account balance in the sidebar footer, right above the Settings button.
+一个常驻的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Cordis 插件，用于在侧边栏底部、Settings 按钮正上方展示你的 DeepSeek 账户余额。
+
+<p align="center">
+  <img src="docs/imgs/example.png" alt="账户余额示例" width="240">
+</p>
 
 ![balance-display](https://img.shields.io/badge/platform-web-blue)
 
-## Features
+> [!NOTE] 
+> **AI 生成声明**:本插件由 AI 生成，可能存在错误、安全隐患或不符合预期之处，使用前请自行 review 代码并实测；发现任何问题欢迎提交 issue 或 PR 修正。
 
-- 💰 Displays your current DeepSeek account balance as `账户余额: 122.77 CNY` in the left sidebar footer, above Settings.
-- 🔄 Auto-refreshes every 60 seconds.
-- ⚡ Config hot reload — edit `cordis.patch.yml` or use Settings → Plugins → Balance Monitor; both apply without restarting `dsh web`.
-- 📱 Hides automatically when the sidebar is collapsed (rail mode).
-- 🔑 Reads the API key from `~/.api_keys` (`export DEEPSEEK_API_KEY="sk-..."`) or the `DEEPSEEK_API_KEY` environment variable.
-- 🎨 Two-decimal formatting, 6px uniform padding.
+## 特性
 
-## Architecture
+- 在左侧边栏底部、Settings 上方展示当前 DeepSeek 账户余额，每 60 秒自动刷新。
+- 支持 CNY 与 USD 两种货币显示，配置阈值以用颜色警告。
+- 配置热加载 —— 编辑 `cordis.patch.yml` 或使用 设置 → 插件 → Balance Monitor；两者均无需重启 `dsh web` 即可生效。
+- 当侧边栏收起（rail 模式）时自动隐藏。
+- 从 `DEEPSEEK_API_KEY` 环境变量读取 API 密钥。
 
-This is a **dual-face Cordis plugin**:
+## 架构
 
-| Half | File | Role |
+| 端 | 文件 | 作用 |
 | --- | --- | --- |
-| Host | `lib/index.js` | Registers `/deepseek-balance` (proxies the [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)) and `/deepseek-balance/settings` (GET effective config; POST saves/resets UI overrides to `$DSH_HOME/deepseek-balance.json`) |
-| Client | `lib/client.js` | Registers the balance readout in the `sidebar.footer.action` slot (60 s poll) and an editable Balance Monitor card in Settings → Plugins |
+| Host | `lib/index.js` | 注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（GET 生效配置；POST 将 UI 覆盖项保存/重置到 `$DSH_HOME/deepseek-balance.json`） |
+| Client | `lib/client.js` | 在 `sidebar.footer.action` 槽位注册余额展示（60 秒轮询），并在 设置 → 插件 中注册可编辑的 Balance Monitor 卡片 |
 
 ```
 Browser (Client half)  --fetch /deepseek-balance-->  Host HTTP route  -->  api.deepseek.com/user/balance
 ```
 
-## Installation
+## 安装
 
-The plugin is a **pure Cordis plugin** (no `dsh.bundle`): `dsh plugin add`
-installs the package into the profile, and a one-row `insert` in the profile's
-`cordis.patch.yml` mounts it. That mount row lives in the HMR-watched layer,
-so config changes, enable/disable, and adding/removing the row all apply live
-— no restart.
+### 通过 [plugin-registry](https://github.com/vlln/plugin-registry) 安装
 
-For other people, install from the git repository (no npm publish needed):
+设置 → 插件 → 安装,source 填 `@choi-peng/dsh-deepseek-balance` 或者 `github:Choi-Peng/dsh-deepseek-balance`
 
+### 手动安装
+
+1. 将插件安装到 web profile：
 ```bash
-# 1. Install the package into the web profile:
-dsh plugin --profile web add git+https://github.com/Choi-Peng/dsh-deepseek-balance.git
-#    or a pinned version:  .../dsh-deepseek-balance.git#v0.3.0
+dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 ```
 
-For your own checkout, `link:` references it live (no re-install after code
-edits):
-
-```bash
-dsh plugin --profile web add link:./dsh-deepseek-balance
-```
-
+2. 在 profile 的 patch 层挂载插件行：
 ```yaml
-# 2. Mount the plugin row in the profile's patch layer:
 # ~/.dsh/profiles/web/cordis.patch.yml
 - insert:
     - id: deepseek-balance
@@ -61,96 +55,40 @@ dsh plugin --profile web add link:./dsh-deepseek-balance
         warningThresholdUsd: 0
 ```
 
-`dsh plugin add` runs `pnpm add`; since the package declares no `dsh.bundle`,
-it is installed as a plain dependency (the CLI prints a notice to that effect)
-and the row above is what mounts it. Saving `cordis.patch.yml` is picked up by
-config HMR immediately — the row mounts and the balance appears without a
-restart.
+### 卸载方式：
 
-Remove with:
-
+先从 cordis.patch.yml 移除该行（实时生效），然后：
 ```bash
-# drop the row from cordis.patch.yml (applies live), then:
 dsh plugin --profile web remove @choi-peng/dsh-deepseek-balance
 ```
 
-### 通过 vlln/plugin-registry 安装
+## 配置
 
-本仓库的 [`catalog.json`](catalog.json) 是 hub 格式的发现索引
-(`bundle: false` → 纯插件,走 insert 行**实时挂载**),可直接接入
-[vlln/plugin-registry](https://github.com/vlln/plugin-registry) 的薄控制台
-与 `plugin_*` 工具(已实测:git 源安装 → 控制台写 insert 行 → 配置 HMR
-零重启挂载)。
+插件设置为分层结构，**两层都实时生效，无需重启 `dsh web`**：
 
-1. 安装薄控制台(一次,bundle,重启 web 生效):
-   ```bash
-   dsh plugin --profile web add "github:vlln/plugin-registry#main&path:/packages/plugin/console"
-   ```
-
-2. 让 `plugin_search` 能找到本插件——把发现源加入 `$DSH_HOME/plugin-sources/sources.yml`:
-   ```yaml
-   sources:
-     - id: choi-peng
-       kind: index
-       locator: https://raw.githubusercontent.com/Choi-Peng/dsh-deepseek-balance/main/catalog.json
-       trust: community
-   ```
-   或直接用工具探测并记住:`plugin_search --source <上面的 URL>`。
-
-3. 安装(两种途径,均实时挂载、无需重启):
-   - **面板**:设置 → 插件 → 安装,source 填 `github:Choi-Peng/dsh-deepseek-balance`;
-   - **工具**:`plugin_install`,source 同上(npm 发布后可直填 `@choi-peng/dsh-deepseek-balance`)。
-
-## Configuration
-
-The plugin settings are layered, and **both layers apply live, without
-restarting `dsh web`**:
-
-| Layer | Source | How it applies |
+| 层 | 来源 | 生效方式 |
 | --- | --- | --- |
-| Base | the `deepseek-balance` row `config` in the profile's `cordis.patch.yml` | `dsh web` watches the patch layer (HMR); saving the file restarts this fiber with the new config |
-| Overrides | `$DSH_HOME/deepseek-balance.json` — written by **Settings → Plugins → Balance Monitor** | The host re-reads the file on every `/deepseek-balance/settings` request, so edits apply immediately; overrides win per field |
+| 基础层 | profile 的 `cordis.patch.yml` 中 `deepseek-balance` 行的 `config` | `dsh web` 会监听 patch 层（HMR）；保存文件会用新配置重启此 fiber |
+| 覆盖层 | `$DSH_HOME/deepseek-balance.json` —— 由 **设置 → 插件 → Balance Monitor** 写入 | host 在每次 `/deepseek-balance/settings` 请求时都会重新读取该文件，编辑立即生效；覆盖项按字段优先级更高 |
 
-Effective settings = patch base overlaid with UI overrides. The card exposes
-`displayCurrency` (select) and both warning thresholds (number inputs) with
-Save / Reset-to-defaults; after saving, the sidebar readout refreshes
-immediately (it also re-polls every 60 s).
+生效配置 = patch 基础层叠加 UI 覆盖项。卡片暴露
+`displayCurrency`（下拉框）以及两个告警阈值（数字输入框），并提供
+保存 / 恢复默认值；保存后，侧边栏余额展示会立即刷新（同时也会每 60 秒重新轮询一次）。
 
-The API key is resolved in this order:
+API 密钥按以下顺序解析：
 
-1. `DEEPSEEK_API_KEY` environment variable
-2. `~/.api_keys` file — the line `export DEEPSEEK_API_KEY="sk-..."`
+1. `DEEPSEEK_API_KEY` 环境变量
+2. `~/.api_keys` 文件 —— 形如 `export DEEPSEEK_API_KEY="sk-..."` 的行
 
-The balance API returns both CNY and USD balances when present; the plugin prefers CNY and falls back to USD.
+余额 API 在存在时会同时返回 CNY 与 USD 余额；插件优先使用 CNY，缺省时回退到 USD。
 
-### Hot reload chain
-
-1. `dsh web` boots with `@deepseek-ai/cordis-plugin-hmr` and watches the
-   profile's patch layer (`dsh-app-boot` → `watchUserPatches`).
-2. On save, HMR re-parses the patch file and transactionally re-applies it to
-   the loader entry tree (`cordis-plugin-include` → `entry.update()`).
-3. The loader diffs the `deepseek-balance` row: a `config` change restarts just
-   that fiber with the new config (`fiber.update()` → Cordis `restart()`).
-4. The host half re-registers its routes (`/deepseek-balance`,
-   `/deepseek-balance/settings`) through `ctx.effect` disposers, so the new
-   settings are served immediately.
-5. The sidebar readout re-polls `/deepseek-balance/settings` every 60 s and the
-   Settings → Plugins card every 30 s — new values appear within a minute.
-
-The API key is *not* part of the hot-reload config: it is re-resolved from
-`~/.api_keys` / the environment on every balance fetch, so editing
-`~/.api_keys` also takes effect without a restart.
-
-If the edited YAML is invalid, HMR logs an `hmr/config-update-failed`
-diagnostic and the last good tree stays active.
-
-## Development
+## 开发
 
 ```bash
-# Validate the host half imports cleanly:
+# 校验 host 半部分可被干净地导入：
 node --input-type=module -e "import('@choi-peng/dsh-deepseek-balance').then(m => console.log(m.name, m.inject))"
 
-# Syntax-check the client bundle:
+# 对 client bundle 做语法检查：
 node -e "new Function(require('fs').readFileSync('lib/client.js', 'utf8'))"
 ```
 
