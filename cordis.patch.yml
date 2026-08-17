@@ -1,8 +1,8 @@
 # DeepSeek-Balance-Config
-- insert:
-    - id: deepseek-balance
-      name: '@choi-p/dsh-deepseek-balance'
-      config:
-        displayCurrency: usd
-        warningThresholdCny: 0
-        warningThresholdUsd: 0
+
+- id: deepseek-balance
+  name: '@choi-p/dsh-deepseek-balance'
+  config:
+    displayCurrency: usd
+    warningThresholdCny: 0
+    warningThresholdUsd: 0
