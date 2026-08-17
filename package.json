@@ -1,6 +1,6 @@
 {
   "name": "@choi-p/dsh-deepseek-balance",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DeepSeek account balance in the dsh web sidebar footer, with live config hot reload and an editable Settings → Plugins card.",
   "license": "MIT",
   "keywords": [
@@ -13,6 +13,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Choi-Peng/dsh-deepseek-balance.git"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis-plugin-include": "^1.0.6",
+    "js-yaml": "^4.2.0"
   },
   "publishConfig": {
     "access": "public"
