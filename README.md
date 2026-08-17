@@ -23,7 +23,7 @@
 
 | 端 | 文件 | 作用 |
 | --- | --- | --- |
-| Host | `lib/index.js` | 注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（GET 生效配置；POST 将设置保存/重置回 profile 的 `cordis.patch.yml` 中本插件所在行，行不在 profile patch 时回退到 `$DSH_HOME/deepseek-balance.json`） |
+| Host | `lib/index.js` | 注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（GET 生效配置；POST 将设置保存/重置回 profile 的 `cordis.patch.yml` 中本插件所在行，启动时若该行不存在则写入默认配置） |
 | Client | `lib/client.js` | 在 `sidebar.footer.action` 槽位注册余额展示（60 秒轮询），并在 设置 → 插件 中注册可编辑的 Balance Monitor 卡片 |
 
 ```
@@ -69,10 +69,9 @@ dsh plugin --profile web remove @choi-p/dsh-deepseek-balance
 | 层 | 来源 | 生效方式 |
 | --- | --- | --- |
 | 默认值 | 代码内置（`cny`，两个阈值均为 0） | — |
-| 主存储 | profile 的 `cordis.patch.yml` 中 `deepseek-balance` 行的 `config` —— **设置 → 插件 → Balance Monitor 的保存/重置会直接改写该行**（只替换该行的 `config` 块，文件中的注释、`!!js` 表达式与其他行原样保留；行文本无法识别时才整文件重写） | `dsh web` 监听 patch 层（HMR）；写入后自动用新配置重启此 fiber，无需重启 |
-| 兜底 | 该行不在 profile 的 patch 文件里时（例如从 home 级 `$DSH_HOME/cordis.patch.yml` 或自定义配置挂载），UI 修改回退到旧的 `$DSH_HOME/deepseek-balance.json` | host 每次请求都会重读该文件，编辑立即生效 |
+| 主存储 | profile 的 `cordis.patch.yml` 中 `deepseek-balance` 行的 `config` —— **设置 → 插件 → Balance Monitor 的保存/重置会直接改写该行**（只替换该行的 `config` 块，文件中的注释、`!!js` 表达式与其他行原样保留；行文本无法识别时才整文件重写）；**插件启动时若 profile patch 中尚无本插件行，则自动追加一行默认配置** | `dsh web` 监听 patch 层（HMR）；写入后自动用新配置重启此 fiber，无需重启 |
 
-写入 patch 成功后，旧的覆盖文件会被清空，避免过期值盖过 patch 配置。卡片暴露
+卡片暴露
 `displayCurrency`（下拉框）以及两个告警阈值（数字输入框），并提供
 保存 / 恢复默认值；保存后，侧边栏余额展示会立即刷新（同时也会每 60 秒重新轮询一次）。
 
