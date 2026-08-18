@@ -1,6 +1,6 @@
 {
   "name": "@choi-p/dsh-deepseek-balance",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "DeepSeek account balance in the dsh web sidebar footer, with live config hot reload and an editable Settings → Plugins card.",
   "license": "MIT",
   "keywords": [
