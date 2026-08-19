@@ -14,8 +14,8 @@ A persistent [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 ## Features
 
 - Displays your current DeepSeek account balance at the bottom of the left sidebar, above Settings, auto-refreshing every 60 seconds.
-- Supports both CNY and USD display, with configurable thresholds for color warnings.
-- Config hot reload — edit `cordis.patch.yml` or use Settings → Plugins → Balance Monitor; both apply without restarting `dsh web`.
+- Three display modes: CNY only, USD only, or both; per-currency warning thresholds color the readout red below the threshold and yellow below twice it (0 disables the warning).
+- Live config — deployer defaults via `cordis.patch.yml` (base layer, HMR), user settings via Settings → Plugins → Balance Monitor (persisted to `settings.yaml` through the dsh settings service); both apply without restarting `dsh web`.
 - Hides automatically when the sidebar is collapsed (rail mode).
 - Reads the API key from the `DEEPSEEK_API_KEY` environment variable.
 
@@ -25,7 +25,7 @@ This is a **dual-face Cordis plugin**:
 
 | Half | File | Role |
 | --- | --- | --- |
-| Host | `lib/index.js` | Registers the `deepseek-balance` settings namespace (so the Settings → Plugins → Plugin configuration tab dispatches the card), plus `/deepseek-balance` (proxies the [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)) and `/deepseek-balance/settings` (GET effective config; POST saves/resets settings back into this plugin's row in the profile's `cordis.patch.yml`; if the row is absent at startup, a default row is written) |
+| Host | `lib/index.js` | Registers the `deepseek-balance` settings namespace on the official `ctx.settings` seam (the patch-row config becomes the base layer; the Settings → Plugins → Plugin configuration tab dispatches the card), plus `/deepseek-balance` (proxies the [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)) and `/deepseek-balance/settings` (a thin proxy over `ctx.settings`: GET effective settings + revision; POST saves/resets the user layer with optimistic-concurrency revisions, answering 409 on conflict) |
 | Client | `lib/client.js` | Registers the balance readout in the `sidebar.footer.action` slot (60 s poll) and an editable Balance Monitor card in `settings.plugin.item` keyed `deepseek-balance` (rendered in the Plugin configuration tab) |
 
 ```
@@ -40,56 +40,50 @@ Settings → Plugins → Install, and set the source to `@choi-p/dsh-deepseek-ba
 
 ### Manual Installation
 
-1. Install the plugin into the web profile:
 ```bash
 dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 ```
 
-2. Mount the plugin row in the profile's patch layer:
-```yaml
-# ~/.dsh/profiles/web/cordis.patch.yml
-- insert:
-    - id: deepseek-balance
-      name: '@choi-p/dsh-deepseek-balance'
-      config:
-        displayCurrency: cny
-        warningThresholdCny: 0
-        warningThresholdUsd: 0
-```
+The package ships its own `cordis.patch.yml` (`dsh.bundle.patch` in `package.json`), which dsh applies automatically when installing the plugin — **no need to hand-edit the profile-level `cordis.patch.yml`**. Restart `dsh web` for it to take effect (plugin discovery is cached per process).
 
 ### Uninstalling
 
-First remove the row from `cordis.patch.yml` (applies live), then:
 ```bash
 dsh plugin --profile web remove @choi-p/dsh-deepseek-balance
 ```
 
+The bundle mount disappears with the plugin; if you ever wrote the row into the profile-level patch manually, remove it first.
+
 ## Configuration
 
-The plugin settings are layered, and **all layers apply live, without restarting `dsh web`**:
+The plugin settings follow the official dsh two-seam configuration model, and **all layers apply live, without restarting `dsh web`** (requires `@deepseek-ai/dsh-settings` ≥ 0.1.0-rc.7 on the host — built into standard dsh web distributions):
 
 | Layer | Source | How it applies |
 | --- | --- | --- |
-| Defaults | hard-coded in the plugin (`cny`, both thresholds 0) | — |
-| Primary | the `deepseek-balance` row `config` in the profile's `cordis.patch.yml` — **Save/Reset from Settings → Plugins → Balance Monitor rewrites that row directly** (only the row's `config` block is replaced; comments, `!!js` expressions, and other rows in the file are preserved verbatim; a full-file rewrite is used only when the row text is unrecognizable); **at startup, if the profile patch has no row for this plugin yet, a default row is appended** | `dsh web` watches the patch layer (HMR); writing the file restarts this fiber with the new config, no restart needed |
+| Defaults | declared in the schema (`cny`, both thresholds 0) | — |
+| Base (deployer's static config) | the row `config` in the plugin bundle's own `cordis.patch.yml` (`dsh.bundle.patch`, applied automatically on install) | `dsh web` watches the patch layer (HMR); editing it restarts this fiber with the new config |
+| User (runtime settings) | Save/Reset from Settings → Plugins → Balance Monitor, persisted through `ctx.settings` into `$DSH_HOME/settings.yaml`; Reset clears the user layer and falls back to base | hot-published by the settings service, applies immediately; this plugin never writes `cordis.patch.yml` |
 
 The card exposes
-`displayCurrency` (select) and both warning thresholds (number inputs), with
-Save / Reset-to-defaults; after saving, the sidebar readout refreshes
-immediately (it also re-polls every 60 s).
+`displayCurrency` (select: CNY only / USD only / both) and both warning
+thresholds (number inputs), with Save / Reset-to-defaults. Saves carry the
+read revision for optimistic concurrency — if the settings changed elsewhere,
+the card reloads the latest values and tells you. The sidebar readout re-polls
+every 60 s. Warning rule: balance ≤ threshold turns red, ≤ twice the threshold
+turns yellow, and a threshold of 0 disables the warning.
 
-The API key is resolved in this order:
+> [!NOTE]
+> **Upgrading from ≤ 0.3.x**: values previously written into the `cordis.patch.yml` row `config` automatically become the base layer, so the effective settings are unchanged — no migration needed. To turn them into user-layer settings instead, save once from the Balance Monitor card; afterwards the row `config` serves only as deployer defaults and can be trimmed manually.
 
-1. `DEEPSEEK_API_KEY` environment variable
-2. `~/.api_keys` file — the line `export DEEPSEEK_API_KEY="sk-..."`
+The API key is read from the `DEEPSEEK_API_KEY` environment variable; it is held only by the host half and sent as a `Bearer` token, never exposed to the browser.
 
-The balance API returns both CNY and USD balances when present; the plugin prefers CNY and falls back to USD.
+The balance API returns all of the account's currency balances (usually CNY and USD); the sidebar shows the currencies selected by `displayCurrency`.
 
 ## Development
 
 ```bash
 # Validate the host half imports cleanly:
-node --input-type=module -e "import('@choi-p/dsh-deepseek-balance').then(m => console.log(m.name, m.inject))"
+node --input-type=module -e "import('./lib/index.js').then(m => console.log(m.name, m.inject))"
 
 # Syntax-check the client bundle:
 node -e "new Function(require('fs').readFileSync('lib/client.js', 'utf8'))"

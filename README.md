@@ -14,8 +14,8 @@
 ## 特性
 
 - 在左侧边栏底部、Settings 上方展示当前 DeepSeek 账户余额，每 60 秒自动刷新。
-- 支持 CNY 与 USD 两种货币显示，配置阈值以用颜色警告。
-- 配置热加载 —— 编辑 `cordis.patch.yml` 或使用 设置 → 插件 → Balance Monitor；两者均无需重启 `dsh web` 即可生效。
+- 三种显示模式：仅 CNY、仅 USD、或同时显示两者；可为 CNY/USD 分别配置预警阈值 —— 余额低于阈值显示红色、低于其两倍显示黄色（0 = 禁用预警）。
+- 配置实时生效 —— 部署默认值编辑 `cordis.patch.yml`（base 层，HMR），用户设置用 设置 → 插件 → Balance Monitor（保存到 `settings.yaml`，经 dsh settings 服务热发布）；两者均无需重启 `dsh web`。
 - 当侧边栏收起（rail 模式）时自动隐藏。
 - 从 `DEEPSEEK_API_KEY` 环境变量读取 API 密钥。
 
@@ -23,7 +23,7 @@
 
 | 端 | 文件 | 作用 |
 | --- | --- | --- |
-| Host | `lib/index.js` | 注册 `deepseek-balance` settings 命名空间（供 设置 → 插件 → Plugin configuration 标签页派发卡片）；注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（GET 生效配置；POST 将设置保存/重置回 profile 的 `cordis.patch.yml` 中本插件所在行，启动时若该行不存在则写入默认配置） |
+| Host | `lib/index.js` | 在官方 `ctx.settings` 缝上注册 `deepseek-balance` settings 命名空间（patch 行内 config 作为 base 层；供 设置 → 插件 → Plugin configuration 标签页派发卡片）；注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（`ctx.settings` 的薄代理：GET 生效设置 + revision；POST 保存/重置写入用户层，携带 revision 乐观并发，冲突返回 409） |
 | Client | `lib/client.js` | 在 `sidebar.footer.action` 槽位注册余额展示（60 秒轮询），并以 `deepseek-balance` 为 key 在 `settings.plugin.item` 注册可编辑的 Balance Monitor 卡片（显示于 Plugin configuration 标签页） |
 
 ```
@@ -38,55 +38,46 @@ Browser (Client half)  --fetch /deepseek-balance-->  Host HTTP route  -->  api.d
 
 ### 手动安装
 
-1. 将插件安装到 web profile：
 ```bash
 dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 ```
 
-2. 在 profile 的 patch 层挂载插件行：
-```yaml
-# ~/.dsh/profiles/web/cordis.patch.yml
-- insert:
-    - id: deepseek-balance
-      name: '@choi-p/dsh-deepseek-balance'
-      config:
-        displayCurrency: cny
-        warningThresholdCny: 0
-        warningThresholdUsd: 0
-```
+插件包自带 `cordis.patch.yml`（`package.json` 中的 `dsh.bundle.patch`），安装时由 dsh 自动挂载到 web profile —— **无需手动编辑 profile 层的 `cordis.patch.yml`**。重启 `dsh web` 后生效（插件发现按进程缓存）。
 
 ### 卸载方式：
 
-先从 cordis.patch.yml 移除该行（实时生效），然后：
 ```bash
 dsh plugin --profile web remove @choi-p/dsh-deepseek-balance
 ```
 
+bundle 挂载随插件移除自动消失；若曾在 profile 层手动写过该行，需先删掉它。
+
 ## 配置
 
-插件设置分层，**均实时生效，无需重启 `dsh web`**：
+插件设置遵循 dsh 官方双缝配置模型，**均实时生效，无需重启 `dsh web`**（要求宿主安装 `@deepseek-ai/dsh-settings` ≥ 0.1.0-rc.7，标准 dsh web 发行版内置）：
 
 | 层 | 来源 | 生效方式 |
 | --- | --- | --- |
-| 默认值 | 代码内置（`cny`，两个阈值均为 0） | — |
-| 主存储 | profile 的 `cordis.patch.yml` 中 `deepseek-balance` 行的 `config` —— **设置 → 插件 → Balance Monitor 的保存/重置会直接改写该行**（只替换该行的 `config` 块，文件中的注释、`!!js` 表达式与其他行原样保留；行文本无法识别时才整文件重写）；**插件启动时若 profile patch 中尚无本插件行，则自动追加一行默认配置** | `dsh web` 监听 patch 层（HMR）；写入后自动用新配置重启此 fiber，无需重启 |
+| 默认值 | schema 内置（`cny`，两个阈值均为 0） | — |
+| base 层（部署方静态配置） | 插件 bundle 自带 `cordis.patch.yml` 行内 `config`（`dsh.bundle.patch`，安装即自动挂载） | `dsh web` 监听 patch 层（HMR），编辑后自动用新配置重启此 fiber |
+| 用户层（运行时设置） | 设置 → 插件 → Balance Monitor 的保存/重置，经 `ctx.settings` 持久化到 `$DSH_HOME/settings.yaml`；重置 = 清空用户层回落 base | settings 服务热发布，立即生效；本插件不再改写 `cordis.patch.yml` |
 
 卡片暴露
-`displayCurrency`（下拉框）以及两个告警阈值（数字输入框），并提供
-保存 / 恢复默认值；保存后，侧边栏余额展示会立即刷新（同时也会每 60 秒重新轮询一次）。
+`displayCurrency`（下拉框：仅 CNY / 仅 USD / CNY 和 USD）以及两个告警阈值（数字输入框），并提供
+保存 / 恢复默认值；保存采用 revision 乐观并发，若配置已在别处修改会提示并加载最新值；侧边栏余额展示每 60 秒轮询刷新。预警规则：余额 ≤ 阈值显示红色，≤ 阈值的两倍显示黄色，阈值为 0 时不预警。
 
-API 密钥按以下顺序解析：
+> [!NOTE]
+> **从 ≤ 0.3.x 升级**：此前写在 `cordis.patch.yml` 行内 `config` 的值升级后自动成为 base 层，生效值不变，无需迁移。若希望把它们转为用户层设置，在 Balance Monitor 卡片中重新保存一次即可；此后该行 `config` 仅作为部署默认值，可手动精简。
 
-1. `DEEPSEEK_API_KEY` 环境变量
-2. `~/.api_keys` 文件 —— 形如 `export DEEPSEEK_API_KEY="sk-..."` 的行
+API 密钥从 `DEEPSEEK_API_KEY` 环境变量读取；密钥仅由 host 端持有并以 `Bearer` 方式随请求发送，不会下发到浏览器。
 
-余额 API 在存在时会同时返回 CNY 与 USD 余额；插件优先使用 CNY，缺省时回退到 USD。
+余额 API 会返回账户的全部币种余额（通常为 CNY 与 USD）；侧边栏按 `displayCurrency` 设置显示对应币种。
 
 ## 开发
 
 ```bash
 # 校验 host 半部分可被干净地导入：
-node --input-type=module -e "import('@choi-p/dsh-deepseek-balance').then(m => console.log(m.name, m.inject))"
+node --input-type=module -e "import('./lib/index.js').then(m => console.log(m.name, m.inject))"
 
 # 对 client bundle 做语法检查：
 node -e "new Function(require('fs').readFileSync('lib/client.js', 'utf8'))"
