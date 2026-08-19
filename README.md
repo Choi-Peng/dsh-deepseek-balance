@@ -23,8 +23,8 @@
 
 | 端 | 文件 | 作用 |
 | --- | --- | --- |
-| Host | `lib/index.js` | 注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（GET 生效配置；POST 将设置保存/重置回 profile 的 `cordis.patch.yml` 中本插件所在行，启动时若该行不存在则写入默认配置） |
-| Client | `lib/client.js` | 在 `sidebar.footer.action` 槽位注册余额展示（60 秒轮询），并在 设置 → 插件 中注册一个独立的「Balance Monitor」标签页承载可编辑卡片（`settings.plugins.tab`） |
+| Host | `lib/index.js` | 注册 `deepseek-balance` settings 命名空间（供 设置 → 插件 → Plugin configuration 标签页派发卡片）；注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（GET 生效配置；POST 将设置保存/重置回 profile 的 `cordis.patch.yml` 中本插件所在行，启动时若该行不存在则写入默认配置） |
+| Client | `lib/client.js` | 在 `sidebar.footer.action` 槽位注册余额展示（60 秒轮询），并以 `deepseek-balance` 为 key 在 `settings.plugin.item` 注册可编辑的 Balance Monitor 卡片（显示于 Plugin configuration 标签页） |
 
 ```
 Browser (Client half)  --fetch /deepseek-balance-->  Host HTTP route  -->  api.deepseek.com/user/balance
