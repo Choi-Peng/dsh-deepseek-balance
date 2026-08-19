@@ -3,6 +3,6 @@
     - id: deepseek-balance
       name: '@choi-p/dsh-deepseek-balance'
       config:
-        displayCurrency: usd
+        displayCurrency: cny
         warningThresholdCny: 0
         warningThresholdUsd: 0
