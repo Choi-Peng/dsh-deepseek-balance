@@ -26,7 +26,7 @@ This is a **dual-face Cordis plugin**:
 | Half | File | Role |
 | --- | --- | --- |
 | Host | `lib/index.js` | Registers `/deepseek-balance` (proxies the [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)) and `/deepseek-balance/settings` (GET effective config; POST saves/resets settings back into this plugin's row in the profile's `cordis.patch.yml`; if the row is absent at startup, a default row is written) |
-| Client | `lib/client.js` | Registers the balance readout in the `sidebar.footer.action` slot (60 s poll) and an editable Balance Monitor card in Settings → Plugins |
+| Client | `lib/client.js` | Registers the balance readout in the `sidebar.footer.action` slot (60 s poll) and a dedicated "Balance Monitor" tab in Settings → Plugins hosting the editable card (`settings.plugins.tab`) |
 
 ```
 Browser (Client half)  --fetch /deepseek-balance-->  Host HTTP route  -->  api.deepseek.com/user/balance
