@@ -21,6 +21,8 @@
 
 ## 架构
 
+这是一个**双面（dual-face）Cordis 插件**：
+
 | 端 | 文件 | 作用 |
 | --- | --- | --- |
 | Host | `lib/index.js` | 在官方 `ctx.settings` 缝上注册 `deepseek-balance` settings 命名空间（patch 行内 config 作为 base 层；供 设置 → 插件 → Plugin configuration 标签页派发卡片）；注册 `/deepseek-balance`（代理 [DeepSeek Get User Balance API](https://api-docs.deepseek.com/api/get-user-balance)）和 `/deepseek-balance/settings`（`ctx.settings` 的薄代理：GET 生效设置 + revision；POST 保存/重置写入用户层，携带 revision 乐观并发，冲突返回 409） |
@@ -42,7 +44,7 @@ Browser (Client half)  --fetch /deepseek-balance-->  Host HTTP route  -->  api.d
 dsh plugin --profile web add "github:Choi-Peng/dsh-deepseek-balance"
 ```
 
-插件包自带 `cordis.patch.yml`（`package.json` 中的 `dsh.bundle.patch`），安装时由 dsh 自动挂载到 web profile —— **无需手动编辑 profile 层的 `cordis.patch.yml`**。重启 `dsh web` 后生效（插件发现按进程缓存）。
+插件包自带 `cordis.patch.yml`（`package.json` 中的 `dsh.bundle.patch`），安装时由 dsh 自动应用 —— **无需手改 profile 层的 `cordis.patch.yml`**。重启 `dsh web` 后生效（插件发现按进程缓存）。
 
 ### 卸载方式：
 
@@ -62,16 +64,30 @@ bundle 挂载随插件移除自动消失；若曾在 profile 层手动写过该�
 | base 层（部署方静态配置） | 插件 bundle 自带 `cordis.patch.yml` 行内 `config`（`dsh.bundle.patch`，安装即自动挂载） | `dsh web` 监听 patch 层（HMR），编辑后自动用新配置重启此 fiber |
 | 用户层（运行时设置） | 设置 → 插件 → Balance Monitor 的保存/重置，经 `ctx.settings` 持久化到 `$DSH_HOME/settings.yaml`；重置 = 清空用户层回落 base | settings 服务热发布，立即生效；本插件不再改写 `cordis.patch.yml` |
 
+base 层 `config`（bundle 默认附带）：
+
+```yaml
+- insert:
+    - id: deepseek-balance
+      name: '@choi-p/dsh-deepseek-balance'
+      config:
+        displayCurrency: cny   # cny = 仅 CNY | usd = 仅 USD | both = 同时显示（默认 cny）
+        warningThresholdCny: 0 # CNY 预警阈值（0 = 禁用）；低于显示红色，低于其两倍显示黄色
+        warningThresholdUsd: 0 # USD 预警阈值（0 = 禁用）；低于显示红色，低于其两倍显示黄色
+```
+
 卡片暴露
 `displayCurrency`（下拉框：仅 CNY / 仅 USD / CNY 和 USD）以及两个告警阈值（数字输入框），并提供
 保存 / 恢复默认值；保存采用 revision 乐观并发，若配置已在别处修改会提示并加载最新值；侧边栏余额展示每 60 秒轮询刷新。预警规则：余额 ≤ 阈值显示红色，≤ 阈值的两倍显示黄色，阈值为 0 时不预警。
 
-> [!NOTE]
-> **从 ≤ 0.3.x 升级**：此前写在 `cordis.patch.yml` 行内 `config` 的值升级后自动成为 base 层，生效值不变，无需迁移。若希望把它们转为用户层设置，在 Balance Monitor 卡片中重新保存一次即可；此后该行 `config` 仅作为部署默认值，可手动精简。
-
 API 密钥从 `DEEPSEEK_API_KEY` 环境变量读取；密钥仅由 host 端持有并以 `Bearer` 方式随请求发送，不会下发到浏览器。
 
 余额 API 会返回账户的全部币种余额（通常为 CNY 与 USD）；侧边栏按 `displayCurrency` 设置显示对应币种。
+
+## 使用
+
+1. 在环境变量中设置 `DEEPSEEK_API_KEY` 后启动 `dsh web` —— 侧边栏底部、Settings 上方会显示余额读数，每 60 秒自动刷新。
+2. 设置 → 插件 → **余额监控** 卡片：选择要显示的币种并设置预警阈值，然后保存。所有修改实时生效，无需重启 `dsh web`。
 
 ## 开发
 

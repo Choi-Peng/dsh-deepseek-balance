@@ -64,6 +64,18 @@ The plugin settings follow the official dsh two-seam configuration model, and **
 | Base (deployer's static config) | the row `config` in the plugin bundle's own `cordis.patch.yml` (`dsh.bundle.patch`, applied automatically on install) | `dsh web` watches the patch layer (HMR); editing it restarts this fiber with the new config |
 | User (runtime settings) | Save/Reset from Settings → Plugins → Balance Monitor, persisted through `ctx.settings` into `$DSH_HOME/settings.yaml`; Reset clears the user layer and falls back to base | hot-published by the settings service, applies immediately; this plugin never writes `cordis.patch.yml` |
 
+The base-layer `config` (what the bundle ships):
+
+```yaml
+- insert:
+    - id: deepseek-balance
+      name: '@choi-p/dsh-deepseek-balance'
+      config:
+        displayCurrency: cny   # cny = CNY only | usd = USD only | both (default: cny)
+        warningThresholdCny: 0 # CNY warning threshold (0 = disabled); red below it, yellow below 2×
+        warningThresholdUsd: 0 # USD warning threshold (0 = disabled); red below it, yellow below 2×
+```
+
 The card exposes
 `displayCurrency` (select: CNY only / USD only / both) and both warning
 thresholds (number inputs), with Save / Reset-to-defaults. Saves carry the
@@ -72,12 +84,14 @@ the card reloads the latest values and tells you. The sidebar readout re-polls
 every 60 s. Warning rule: balance ≤ threshold turns red, ≤ twice the threshold
 turns yellow, and a threshold of 0 disables the warning.
 
-> [!NOTE]
-> **Upgrading from ≤ 0.3.x**: values previously written into the `cordis.patch.yml` row `config` automatically become the base layer, so the effective settings are unchanged — no migration needed. To turn them into user-layer settings instead, save once from the Balance Monitor card; afterwards the row `config` serves only as deployer defaults and can be trimmed manually.
-
 The API key is read from the `DEEPSEEK_API_KEY` environment variable; it is held only by the host half and sent as a `Bearer` token, never exposed to the browser.
 
 The balance API returns all of the account's currency balances (usually CNY and USD); the sidebar shows the currencies selected by `displayCurrency`.
+
+## Usage
+
+1. Start `dsh web` with `DEEPSEEK_API_KEY` set in the environment — the sidebar footer shows a balance readout above Settings, refreshed every 60 s.
+2. Settings → Plugins → **Balance Monitor** card: pick the displayed currency and set warning thresholds, then Save. All changes apply live without restarting `dsh web`.
 
 ## Development
 
@@ -91,4 +105,4 @@ node -e "new Function(require('fs').readFileSync('lib/client.js', 'utf8'))"
 
 ## License
 
-MIT
+[MIT](./LICENSE)
